@@ -557,8 +557,12 @@ button:disabled {
 }
 
 .login-stage {
-  display: grid;
-  place-items: center;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   min-height: 0;
   padding: 32px;
   overflow: auto;
