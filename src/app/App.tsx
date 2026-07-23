@@ -6,6 +6,7 @@ import { useAppUpdate } from "../shared/lib/useAppUpdate";
 import { configureAuthSession } from "../shared/api/client";
 import type { UserSummary } from "../entities/user/model/types";
 import type { TokenResponse } from "../entities/user/model/types";
+import type { SignupAccountType } from "../entities/user/model/types";
 import { login, logout, me, signup } from "../features/auth/api/authApi";
 import { fetchMenus } from "../features/menu/api/menuApi";
 import { FacilityManagementScreen } from "../features/facility-management/ui/FacilityManagementScreen";
@@ -15,10 +16,12 @@ import { UserManagementScreen } from "../features/user-management/ui/UserManagem
 import { DashboardScreen } from "../features/dashboard/ui/DashboardScreen";
 import { AppMenuManagementScreen } from "../features/app-menu-management/ui/AppMenuManagementScreen";
 import { RoleManagementScreen } from "../features/role-management/ui/RoleManagementScreen";
+import { PermissionManagementScreen } from "../features/permission-management/ui/PermissionManagementScreen";
+import { RolePermissionManagementScreen } from "../features/role-permission-management/ui/RolePermissionManagementScreen";
 import { SiteSettingsScreen } from "../features/site-settings/ui/SiteSettingsScreen";
 import { API_BASE_URL, SERVER_ROOT_PATH } from "../shared/config/server";
 import { AppSidebar } from "../widgets/app-shell/ui/AppSidebar";
-import { AppTopbar } from "../widgets/app-shell/ui/AppTopbar";
+import { AppTopbar, type AdminFrameTheme } from "../widgets/app-shell/ui/AppTopbar";
 import {
   PROFILE_MENU,
   SETTINGS_MENU,
@@ -34,6 +37,13 @@ import {
 const appVersion = "0.1.0";
 const ACCESS_TOKEN_KEY = "donation-admin:access-token";
 const REFRESH_TOKEN_KEY = "donation-admin:refresh-token";
+const FRAME_THEME_KEY = "donation-admin:frame-theme";
+const FRAME_THEMES = new Set<AdminFrameTheme>(["mint", "sky", "violet", "rose"]);
+
+function readFrameTheme(): AdminFrameTheme {
+  const savedTheme = localStorage.getItem(FRAME_THEME_KEY);
+  return FRAME_THEMES.has(savedTheme as AdminFrameTheme) ? (savedTheme as AdminFrameTheme) : "mint";
+}
 
 export function App() {
   const [token, setToken] = useState(() => localStorage.getItem(ACCESS_TOKEN_KEY) || "");
@@ -44,8 +54,14 @@ export function App() {
   const [booting, setBooting] = useState(true);
   const [activeMenu, setActiveMenu] = useState("DASHBOARD");
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
+  const [frameTheme, setFrameTheme] = useState<AdminFrameTheme>(readFrameTheme);
   const appUpdate = useAppUpdate(appVersion);
   const isLoggedIn = Boolean(token && user);
+
+  const changeFrameTheme = useCallback((theme: AdminFrameTheme) => {
+    setFrameTheme(theme);
+    localStorage.setItem(FRAME_THEME_KEY, theme);
+  }, []);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -127,8 +143,14 @@ export function App() {
     applyTokens(result);
   };
 
-  const handleSignup = async (email: string, username: string, phoneNumber: string, password: string) => {
-    await signup(email.trim(), username.trim(), phoneNumber.trim(), password);
+  const handleSignup = async (
+    accountType: SignupAccountType,
+    email: string,
+    username: string,
+    phoneNumber: string,
+    password: string,
+  ) => {
+    await signup(accountType, email.trim(), username.trim(), phoneNumber.trim(), password);
   };
 
   const handleLogout = async () => {
@@ -162,7 +184,7 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-admin-theme={frameTheme}>
       <AppSidebar
         menus={adminMenus}
         activeMenu={activeMenu}
@@ -177,7 +199,12 @@ export function App() {
         onLogout={handleLogout}
       />
       <div className="app-main">
-        <AppTopbar activeWebMenu={activeWebMenu} activeMenu={activeMenu} />
+        <AppTopbar
+          activeWebMenu={activeWebMenu}
+          activeMenu={activeMenu}
+          frameTheme={frameTheme}
+          onFrameThemeChange={changeFrameTheme}
+        />
         <AdminWorkspace
           activeMenu={activeMenu}
           activeWebMenu={activeWebMenu}
@@ -267,6 +294,14 @@ function AdminWorkspace({
 
   if (activeMenu === "ADMIN_ROLES") {
     return <RoleManagementScreen token={token} />;
+  }
+
+  if (activeMenu === "ADMIN_PERMISSIONS") {
+    return <PermissionManagementScreen token={token} />;
+  }
+
+  if (activeMenu === "ADMIN_ROLE_PERMISSIONS") {
+    return <RolePermissionManagementScreen token={token} />;
   }
 
   if (activeMenu === "ADMIN_MENU_MANAGEMENT") {
